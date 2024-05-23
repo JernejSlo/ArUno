@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.XR.ARFoundation;
@@ -5,28 +6,96 @@ using UnityEngine.XR.ARFoundation;
 public class GameManager : MonoBehaviour
 {
     public GameObject menuPanel;       // Reference to the menu panel
+    public GameObject cardPanel;       // Reference to the card panel
     public GameObject cardStackPrefab; // Prefab for the card stack
     public GameObject cardPrefab;      // Prefab for individual cards
+    public GameObject cardButtonPrefab; // Prefab for card UI button
     public Button startButton;         // Reference to the start button
     public PlaneSpawner planeSpawner;  // Reference to the PlaneSpawner script
 
     private bool gameStarted = false;  // Flag to check if the game has started
     private GameObject cardStack;      // Reference to the spawned card stack
     private GameObject placedCards;    // Reference to the placed cards object
+    private List<GameObject> cardButtons = new List<GameObject>(); // List of card buttons
+
+    public List<Sprite> cardSprites;   // List of card sprites
+    public List<Card> cards = new List<Card>(); // List of cards
+
+    private Dictionary<string, Sprite> spriteLookup; // Dictionary for sprite lookup
 
     void Start()
     {
+        // Ensure the card panel is initially inactive
+        cardPanel.SetActive(false);
+
         startButton.onClick.AddListener(StartGame);
         planeSpawner.OnPlanesDetected += SpawnOrUpdateGameObjects;
         Debug.Log("GameManager started, waiting for button click.");
+
+        InitializeSpriteLookup();
+        InitializeCards();
+    }
+
+    void InitializeSpriteLookup()
+    {
+        spriteLookup = new Dictionary<string, Sprite>();
+        foreach (var sprite in cardSprites)
+        {
+            string key = sprite.name; // Assumes sprite names are in the format "colorNumber" or "colorAction"
+            spriteLookup[key] = sprite;
+        }
+    }
+
+    void InitializeCards()
+    {
+        // Define the color and action arrays
+        string[] colors = { "red", "green", "blue", "yellow" };
+        string[] actions = { "Skip", "Reverse", "DrawTwo" };
+        string[] blackActions = { "drawFour", "wild" };
+
+        // Initialize colored cards
+        foreach (var color in colors)
+        {
+            for (int i = 1; i <= 9; i++)
+            {
+                string key = color + i;
+                if (spriteLookup.ContainsKey(key))
+                {
+                    cards.Add(new Card(spriteLookup[key], color, i.ToString()));
+                }
+            }
+            foreach (var action in actions)
+            {
+                string key = color + action;
+                if (spriteLookup.ContainsKey(key))
+                {
+                    cards.Add(new Card(spriteLookup[key], color, action));
+                }
+            }
+        }
+
+        // Initialize black cards
+        foreach (var action in blackActions)
+        {
+            if (spriteLookup.ContainsKey(action))
+            {
+                cards.Add(new Card(spriteLookup[action], "black", action));
+            }
+        }
     }
 
     void StartGame()
     {
         // Hide the menu
         menuPanel.SetActive(false);
+
+        // Activate the card panel
+        cardPanel.SetActive(true);
+
         gameStarted = true;
-        Debug.Log("Start button clicked, menu hidden.");
+        Debug.Log("Start button clicked, menu hidden and card panel activated.");
+
+        DisplayCards(GetRandomCards(6)); // Display 6 random cards
     }
 
     void SpawnOrUpdateGameObjects()
@@ -51,7 +120,7 @@ public class GameManager : MonoBehaviour
             if (cardStack == null)
             {
                 // Instantiate the card stack if it hasn't been spawned yet
-                cardStack = Instantiate(cardStackPrefab, stackPosition, Quaternion.identity);
+                cardStack = Instantiate(cardStackPrefab, stackPosition, cardStackPrefab.transform.rotation);
                 if (cardStack != null)
                 {
                     Debug.Log("Card stack instantiated successfully.");
@@ -75,8 +144,8 @@ public class GameManager : MonoBehaviour
                 placedCards.transform.position = placedCardsPosition;
 
                 // Instantiate two cards as an example
-                GameObject card1 = Instantiate(cardPrefab, placedCardsPosition, Quaternion.identity, placedCards.transform);
-                GameObject card2 = Instantiate(cardPrefab, placedCardsPosition + new Vector3(0, 0.01f, 0.1f), Quaternion.identity, placedCards.transform); // Slight offset
+                GameObject card1 = Instantiate(cardPrefab, placedCardsPosition, cardPrefab.transform.rotation, placedCards.transform);
+                GameObject card2 = Instantiate(cardPrefab, placedCardsPosition + new Vector3(0, 0.01f, 0.1f), cardPrefab.transform.rotation, placedCards.transform); // Slight offset
                 if (card1 != null && card2 != null)
                 {
                     Debug.Log("Placed cards instantiated successfully.");
@@ -97,5 +166,92 @@ public class GameManager : MonoBehaviour
         {
             Debug.Log("No planes detected.");
         }
+    }
+
+void DisplayCards(List<Card> cardsToDisplay)
+{
+    // Clear existing card buttons
+    foreach (var button in cardButtons)
+    {
+        Destroy(button);
+    }
+    cardButtons.Clear();
+
+    // Debug log to show number of cards to display
+    Debug.Log($"Displaying {cardsToDisplay.Count} cards");
+
+    // Create new card buttons
+    foreach (var card in cardsToDisplay)
+    {
+        GameObject cardButton = Instantiate(cardButtonPrefab, cardPanel.transform);
+        if (cardButton != null)
+        {
+            // Assuming the Image component is directly under the button
+            Image image = cardButton.GetComponentInChildren<Image>();
+
+            if (image != null)
+            {
+                Debug.Log($"Current sprite: {image?.sprite}");
+
+                // Set the card sprite
+                image.sprite = card.sprite;
+                Debug.Log($"Setting sprite: {card.sprite.name} for card: {card.color} {card.action}");
+            }
+            else
+            {
+                Debug.LogError("CardButton prefab is missing an Image component.");
+            }
+
+            // Assuming the Button component is directly under the empty GameObject
+            Button button = cardButton.GetComponentInChildren<Button>().GetComponent<Button>();
+            if (button != null)
+            {
+                // Ensure the current card is captured correctly in the closure
+                Card cardCopy = card; 
+                button.onClick.AddListener(() => OnCardButtonClick(cardCopy));
+            }
+            else
+            {
+                Debug.LogError("CardButton prefab is missing a Button component.");
+            }
+
+            cardButtons.Add(cardButton);
+
+            // Debugging logs for each card button created
+            Debug.Log($"Created card button for: {card.color} {card.action} with sprite {card.sprite?.name}");
+        }
+        else
+        {
+            Debug.LogError("Failed to instantiate card button prefab.");
+        }
+    }
+
+    // Debug log after all cards are displayed
+    Debug.Log($"Displayed {cardsToDisplay.Count} cards");
+}
+
+
+    void OnCardButtonClick(Card card)
+    {
+        Debug.Log($"Card clicked: {card.color} {card.action}");
+        // Add your card click handling logic here
+    }
+
+    List<Card> GetRandomCards(int count)
+    {
+        List<Card> randomCards = new List<Card>();
+        List<int> usedIndices = new List<int>();
+
+        while (randomCards.Count < count)
+        {
+            int index = Random.Range(0, cards.Count);
+            if (!usedIndices.Contains(index))
+            {
+                randomCards.Add(cards[index]);
+                usedIndices.Add(index);
+            }
+        }
+
+        return randomCards;
     }
 }
