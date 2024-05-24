@@ -168,72 +168,97 @@ public class GameManager : MonoBehaviour
         }
     }
 
-void DisplayCards(List<Card> cardsToDisplay)
-{
-    // Clear existing card buttons
-    foreach (var button in cardButtons)
+    void DisplayCards(List<Card> cardsToDisplay)
     {
-        Destroy(button);
-    }
-    cardButtons.Clear();
-
-    // Debug log to show number of cards to display
-    Debug.Log($"Displaying {cardsToDisplay.Count} cards");
-
-    // Create new card buttons
-    foreach (var card in cardsToDisplay)
-    {
-        GameObject cardButton = Instantiate(cardButtonPrefab, cardPanel.transform);
-        if (cardButton != null)
+        // Clear existing card buttons
+        foreach (var button in cardButtons)
         {
-            // Assuming the Image component is directly under the button
-            Image image = cardButton.GetComponentInChildren<Image>();
+            Destroy(button);
+        }
+        cardButtons.Clear();
 
-            if (image != null)
+        // Debug log to show the number of cards to display
+        Debug.Log($"Displaying {cardsToDisplay.Count} cards");
+
+        // Create new card buttons
+        foreach (var card in cardsToDisplay)
+        {
+            GameObject cardButton = Instantiate(cardButtonPrefab, cardPanel.transform);
+            
+            if (cardButton != null)
             {
-                Debug.Log($"Current sprite: {image?.sprite}");
+                // Log child components for debugging
+                LogChildComponents(cardButton);
+                Image image = cardButton.GetComponent<Image>();
+                if (image != null)
+                {
+                    Debug.Log($"Current sprite before setting: {(image.sprite != null ? image.sprite.name : "None")}");
+                    // Set the card sprite
+                    image.sprite = card.sprite;
+                    cardButton.name = $"{card.sprite.name} at index {cardButtons.Count}";
+                    Debug.Log($"Setting sprite: {card.sprite.name} for card: {card.color} {card.action}");
+                    Debug.Log($"Current sprite after setting: {(image.sprite != null ? image.sprite.name : "None")}");
+                }
+                else
+                {
+                    Debug.LogError("CardButton prefab is missing an Image component.");
+                }
 
-                // Set the card sprite
-                image.sprite = card.sprite;
-                Debug.Log($"Setting sprite: {card.sprite.name} for card: {card.color} {card.action}");
+                // Find the Button component within the card button prefab
+                Button button = cardButton.GetComponent<Button>();
+                // Find the Image component within the card button prefab
+                if (button != null)
+                {
+                    // Ensure the current card is captured correctly in the closure
+                    Card cardCopy = card;
+                    button.onClick.AddListener(() => OnCardButtonClick());
+                }
+                else
+                {
+                    Debug.LogError("CardButton prefab is missing a Button component.");
+                }
+
+                cardButtons.Add(cardButton);
+
+                // Debugging logs for each card button created
+                Debug.Log($"Created card button for: {card.color} {card.action} with sprite {card.sprite?.name}");
             }
             else
             {
-                Debug.LogError("CardButton prefab is missing an Image component.");
+                Debug.LogError("Failed to instantiate card button prefab.");
             }
-
-            // Assuming the Button component is directly under the empty GameObject
-            Button button = cardButton.GetComponentInChildren<Button>().GetComponent<Button>();
-            if (button != null)
-            {
-                // Ensure the current card is captured correctly in the closure
-                Card cardCopy = card; 
-                button.onClick.AddListener(() => OnCardButtonClick(cardCopy));
-            }
-            else
-            {
-                Debug.LogError("CardButton prefab is missing a Button component.");
-            }
-
-            cardButtons.Add(cardButton);
-
-            // Debugging logs for each card button created
-            Debug.Log($"Created card button for: {card.color} {card.action} with sprite {card.sprite?.name}");
         }
-        else
+
+
+        // Force a layout rebuild
+        Canvas.ForceUpdateCanvases();
+
+        // Toggle the active state of the card panel to refresh the UI
+        cardPanel.SetActive(false);
+        cardPanel.SetActive(true);
+
+        // Debug log after all cards are displayed
+        Debug.Log($"Displayed {cardsToDisplay.Count} cards");
+    }
+
+    void LogChildComponents(GameObject cardButton)
+    {
+        foreach (Transform child in cardButton.transform)
         {
-            Debug.LogError("Failed to instantiate card button prefab.");
+            Debug.Log("Child: " + child.name);
+            foreach (Component component in child.GetComponents<Component>())
+            {
+                Debug.Log(" - Component: " + component.GetType().Name);
+            }
         }
     }
 
-    // Debug log after all cards are displayed
-    Debug.Log($"Displayed {cardsToDisplay.Count} cards");
-}
 
 
-    void OnCardButtonClick(Card card)
+
+    void OnCardButtonClick()
     {
-        Debug.Log($"Card clicked: {card.color} {card.action}");
+        Debug.Log($"Card clicked!");
         // Add your card click handling logic here
     }
 
