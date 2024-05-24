@@ -111,7 +111,6 @@ public class GameManager : MonoBehaviour
         {
             // Get the first detected plane
             ARPlane firstPlane = planeSpawner.detectedPlanes[0];
-            Debug.Log("Detected plane found: " + firstPlane.trackableId);
 
             // Get the spawn position at the center of the first detected plane
             Vector3 stackPosition = firstPlane.center + new Vector3(0, 0.05f, 0); // Slightly above the plane
@@ -123,7 +122,21 @@ public class GameManager : MonoBehaviour
                 cardStack = Instantiate(cardStackPrefab, stackPosition, cardStackPrefab.transform.rotation);
                 if (cardStack != null)
                 {
-                    Debug.Log("Card stack instantiated successfully.");
+                    // Ensure the child object has the click handler script
+                    Transform childTransform = cardStack.transform.Find("CardStackChild");
+                    if (childTransform != null)
+                    {
+                        var clickHandler = childTransform.GetComponent<CardStackClickHandler>();
+                        if (clickHandler == null)
+                        {
+                            clickHandler = childTransform.gameObject.AddComponent<CardStackClickHandler>();
+                        }
+                        clickHandler.arCamera = Camera.main; // Assign the AR camera
+                    }
+                    else
+                    {
+                        Debug.LogError("CardStackChild not found in CardStackParent.");
+                    }
                 }
                 else
                 {
@@ -134,7 +147,6 @@ public class GameManager : MonoBehaviour
             {
                 // Reposition the existing card stack
                 cardStack.transform.position = stackPosition;
-                Debug.Log("Card stack repositioned to: " + stackPosition);
             }
 
             if (placedCards == null)
@@ -148,7 +160,7 @@ public class GameManager : MonoBehaviour
                 GameObject card2 = Instantiate(cardPrefab, placedCardsPosition + new Vector3(0, 0.01f, 0.1f), cardPrefab.transform.rotation, placedCards.transform); // Slight offset
                 if (card1 != null && card2 != null)
                 {
-                    Debug.Log("Placed cards instantiated successfully.");
+                    // Debug.Log("Placed cards instantiated successfully.");
                 }
                 else
                 {
@@ -159,7 +171,6 @@ public class GameManager : MonoBehaviour
             {
                 // Reposition the existing placed cards parent object
                 placedCards.transform.position = placedCardsPosition;
-                Debug.Log("Placed cards repositioned to: " + placedCardsPosition);
             }
         }
         else
@@ -167,6 +178,7 @@ public class GameManager : MonoBehaviour
             Debug.Log("No planes detected.");
         }
     }
+
 
     void DisplayCards(List<Card> cardsToDisplay)
     {
@@ -184,7 +196,7 @@ public class GameManager : MonoBehaviour
         foreach (var card in cardsToDisplay)
         {
             GameObject cardButton = Instantiate(cardButtonPrefab, cardPanel.transform);
-            
+
             if (cardButton != null)
             {
                 // Log child components for debugging
@@ -253,8 +265,54 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public void AddRandomCard()
+    {
+        if (cards.Count > 0)
+        {
+            List<Card> randomCardList = GetRandomCards(1);
+            if (randomCardList.Count > 0)
+            {
+                Card randomCard = randomCardList[0];
+                GameObject cardButton = Instantiate(cardButtonPrefab, cardPanel.transform);
 
+                if (cardButton != null)
+                {
+                    Image image = cardButton.GetComponent<Image>();
+                    if (image != null)
+                    {
+                        image.sprite = randomCard.sprite;
+                        cardButton.name = $"{randomCard.sprite.name} at index {cardButtons.Count}";
+                        Debug.Log($"Added new card: {randomCard.color} {randomCard.action} with sprite {randomCard.sprite?.name}");
+                    }
+                    else
+                    {
+                        Debug.LogError("CardButton prefab is missing an Image component.");
+                    }
 
+                    Button button = cardButton.GetComponent<Button>();
+                    if (button != null)
+                    {
+                        button.onClick.AddListener(() => OnCardButtonClick());
+                    }
+                    else
+                    {
+                        Debug.LogError("CardButton prefab is missing a Button component.");
+                    }
+
+                    cardButtons.Add(cardButton);
+                    Canvas.ForceUpdateCanvases();
+                }
+                else
+                {
+                    Debug.LogError("Failed to instantiate card button prefab.");
+                }
+            }
+        }
+        else
+        {
+            Debug.LogError("No cards available to add.");
+        }
+    }
 
     void OnCardButtonClick()
     {
