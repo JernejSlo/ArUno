@@ -442,7 +442,7 @@ public class GameManager : MonoBehaviour
 
         while (randomCards.Count < count)
         {
-            int index = Random.Range(0, cards.Count);
+            int index = UnityEngine.Random.Range(0, cards.Count);
             if (!usedIndices.Contains(index))
             {
                 randomCards.Add(cards[index]);
