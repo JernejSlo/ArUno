@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -18,6 +19,10 @@ public class GameManager : MonoBehaviour
     private GameObject placedCards;    // Reference to the placed cards object
     private List<GameObject> cardButtons = new List<GameObject>(); // List of card buttons
 
+    private GameObject[] lastThreeCards = new GameObject[3]; // Array to manage the last three placed cards
+    private Card[] lastThreeSprites = new Card[3]; // Array to manage the last three placed cards
+
+
     public List<Sprite> cardSprites;   // List of card sprites
     public List<Card> cards = new List<Card>(); // List of cards
 
@@ -34,6 +39,8 @@ public class GameManager : MonoBehaviour
 
         InitializeSpriteLookup();
         InitializeCards();
+
+       
     }
 
     void InitializeSpriteLookup()
@@ -154,18 +161,19 @@ public class GameManager : MonoBehaviour
                 // Create a new parent object for placed cards
                 placedCards = new GameObject("PlacedCards");
                 placedCards.transform.position = placedCardsPosition;
-
+                float flt = 0;
                 // Instantiate two cards as an example
-                GameObject card1 = Instantiate(cardPrefab, placedCardsPosition, cardPrefab.transform.rotation, placedCards.transform);
-                GameObject card2 = Instantiate(cardPrefab, placedCardsPosition + new Vector3(0, 0.01f, 0.1f), cardPrefab.transform.rotation, placedCards.transform); // Slight offset
-                if (card1 != null && card2 != null)
+                for (int i = 0; i < lastThreeCards.Length; i++)
                 {
-                    // Debug.Log("Placed cards instantiated successfully.");
+                   
+                    GameObject card = Instantiate(cardPrefab, placedCardsPosition + new Vector3(0, i * 0.01f, 0.1f), Quaternion.Euler(0, 10*flt, 0), placedCards.transform); // Slight offset and rotation
+                    lastThreeCards[i] = card;
+                    lastThreeCards[i].SetActive(false);
+                    flt += 5;
+
                 }
-                else
-                {
-                    Debug.LogError("Failed to instantiate placed cards.");
-                }
+
+
             }
             else
             {
@@ -223,7 +231,7 @@ public class GameManager : MonoBehaviour
                 {
                     // Ensure the current card is captured correctly in the closure
                     Card cardCopy = card;
-                    button.onClick.AddListener(() => OnCardButtonClick());
+                    button.onClick.AddListener(() => OnCardButtonClick(card));
                 }
                 else
                 {
@@ -292,7 +300,7 @@ public class GameManager : MonoBehaviour
                     Button button = cardButton.GetComponent<Button>();
                     if (button != null)
                     {
-                        button.onClick.AddListener(() => OnCardButtonClick());
+                        button.onClick.AddListener(() => OnCardButtonClick(randomCard));
                     }
                     else
                     {
@@ -314,11 +322,118 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    void OnCardButtonClick()
+    void OnCardButtonClick(Card card)
     {
-        Debug.Log($"Card clicked!");
-        // Add your card click handling logic here
+        Debug.Log($"Card clicked: {card.color} {card.action}");
+        
+
+        if (validMove(card))
+        {
+            PlaceCard(card);
+            RemoveCardButton(card);
+            otherGameLogic(card);
+        }
+       
+
     }
+
+    private Boolean validMove(Card card)
+    {
+        // logic if card was correct
+
+        return true;
+    }
+
+    private void otherGameLogic(Card card)
+    {
+        // handle what happens
+
+        // èe je bot na potezi narediš od bota
+    }
+
+    private void handleBotDecision(Card card)
+    {
+        // handle what the bot does
+    }
+
+    void RemoveCardButton(Card card)
+    {
+        GameObject buttonToRemove = null;
+
+        // Find the button corresponding to the card
+        foreach (GameObject button in cardButtons)
+        {
+            Image image = button.GetComponent<Image>();
+            if (image != null && image.sprite == card.sprite)
+            {
+                buttonToRemove = button;
+                break;
+            }
+        }
+
+        // Remove the button from the list and destroy the button GameObject
+        if (buttonToRemove != null)
+        {
+            cardButtons.Remove(buttonToRemove);
+            Destroy(buttonToRemove);
+            Debug.Log($"Removed button for card: {card.color} {card.action}");
+        }
+        else
+        {
+            Debug.LogError($"Button for card: {card.color} {card.action} not found");
+        }
+    }
+
+
+    void PlaceCard(Card card)
+    {
+        // Shift existing cards forward
+        for (int i = 0; i < lastThreeSprites.Length - 1; i++)
+        {
+            lastThreeSprites[i] = lastThreeSprites[i + 1];
+            if (lastThreeSprites[i] != null)
+            {
+                UpdateCardSprite(lastThreeCards[i], lastThreeSprites[i].sprite.texture);
+                lastThreeCards[i].SetActive(true);
+            }
+            else
+            {
+                lastThreeCards[i].SetActive(false);
+            }
+        }
+
+        // Set the new card at the end
+        lastThreeSprites[lastThreeSprites.Length - 1] = card;
+        UpdateCardSprite(lastThreeCards[lastThreeCards.Length - 1], card.sprite.texture);
+        lastThreeCards[lastThreeCards.Length - 1].SetActive(true);
+    }
+
+    void UpdateCardSprite(GameObject card, Texture newTexture)
+    {
+        Transform actualBody = card.transform.Find("CardBody");
+        Transform frontQuad = actualBody.transform.Find("FrontQuad");
+        if (frontQuad != null)
+        {
+            MeshRenderer renderer = frontQuad.GetComponent<MeshRenderer>();
+            if (renderer != null)
+            {
+                renderer.material.mainTexture = newTexture;
+                Debug.Log($"Updated texture of {card.name} to {newTexture.name}");
+            }
+            else
+            {
+                Debug.LogError($"MeshRenderer not found on {frontQuad.name}");
+            }
+        }
+        else
+        {
+            Debug.LogError($"Front Quad not found on {card.name}");
+        }
+    }
+
+
+
+
 
     List<Card> GetRandomCards(int count)
     {
