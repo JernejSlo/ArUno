@@ -119,12 +119,6 @@ public class GameManager : MonoBehaviour
             // Get the first detected plane
             ARPlane firstPlane = planeSpawner.detectedPlanes[0];
 
-            if (firstPlane == null)
-            {
-                Debug.LogError("First plane is null");
-                return;
-            }
-
             // Get the spawn position at the center of the first detected plane
             Vector3 stackPosition = firstPlane.center + new Vector3(0, 0.05f, 0); // Slightly above the plane
             Vector3 placedCardsPosition = stackPosition + new Vector3(0.3f, 0, 0); // Position next to the stack
@@ -172,7 +166,7 @@ public class GameManager : MonoBehaviour
                 for (int i = 0; i < lastThreeCards.Length; i++)
                 {
                    
-                    GameObject card = Instantiate(cardPrefab, placedCardsPosition + new Vector3(0, i * 0.01f, 0), Quaternion.Euler(0, 10*flt, 0), placedCards.transform); // Slight offset and rotation
+                    GameObject card = Instantiate(cardPrefab, placedCardsPosition + new Vector3(0, i * 0.01f, 0.1f), Quaternion.Euler(0, 10*flt, 0), placedCards.transform); // Slight offset and rotation
                     lastThreeCards[i] = card;
                     lastThreeCards[i].SetActive(false);
                     flt += 5;
@@ -488,7 +482,7 @@ public class GameManager : MonoBehaviour
 
         while (randomCards.Count < count)
         {
-            int index = UnityEngine.Random.Range(0, cards.Count);
+            int index = Random.Range(0, cards.Count);
             if (!usedIndices.Contains(index))
             {
                 randomCards.Add(cards[index]);
