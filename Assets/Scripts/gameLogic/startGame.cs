@@ -339,21 +339,61 @@ public class GameManager : MonoBehaviour
 
     private Boolean validMove(Card card)
     {
-        // logic if card was correct
+        card lastCard lastThreeSprites[lastThreeSprites.Length - 1]
 
-        return true;
+        if (lastCard == null)
+        {
+            return true;
+        }
+
+        bool colorMatch = card.color == lastCard.color;
+        bool typeMatch = card.action ==lastCard.action;
+
+        bool isBlackCard = card.color == colorMatch.black;
+
+        return colorMatch || typeMatch || isBlackCard;
     }
 
     private void otherGameLogic(Card card)
     {
         // handle what happens
 
-        // �e je bot na potezi naredi� od bota
+        // �e je bot na potezi naredi� od bota
     }
 
     private void handleBotDecision(Card card)
     {
-        // handle what the bot does
+        Debug.Log("Bot je na potezi.");
+
+        // Dobimo seznam kart v botovi roki
+        List<Card> botHand = GetBotHand();
+
+        // Poiščemo veljavne karte
+        List<Card> validCards = new List<Card>();
+        foreach (var card in botHand)
+        {
+            if (ValidMove(card, lastPlayedCard))
+            {
+                validCards.Add(card);
+            }
+        }
+
+        // Če ima bot veljavne karte, izbere naključno karto
+        if (validCards.Count > 0)
+        {
+            Card chosenCard = validCards[Random.Range(0, validCards.Count)];
+            Debug.Log($"Bot izbere karto: {chosenCard.Color} {chosenCard.CardType}");
+            OnCardButtonClick(chosenCard);  // Odigra izbrano karto
+        }
+        else
+        {
+            // Če bot nima veljavne poteze, vleče karto
+            Debug.Log("Bot nima veljavne poteze, vleče karto.");
+            AddRandomCard();
+        }
+
+        // Preklopimo na naslednjega igralca
+        currentPlayer = Player.Human;
     }
 
     void RemoveCardButton(Card card)
