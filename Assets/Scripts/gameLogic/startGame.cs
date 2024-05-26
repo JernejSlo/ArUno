@@ -14,6 +14,8 @@ public class GameManager : MonoBehaviour
     public GameObject opponentCardsPanel;       // Reference to the card panel
     public GameObject winnerPanel;       // Reference to the card panel
 
+    public TMPro.TMP_Text winnerText;
+
     public GameObject cardStackPrefab; // Prefab for the card stack
     public GameObject cardPrefab;      // Prefab for individual cards
     public GameObject cardButtonPrefab; // Prefab for card UI button
@@ -437,7 +439,14 @@ public class GameManager : MonoBehaviour
             RemoveCardButton(card);
             if (cardButtons.Count == 0)
             {
-
+                if (winnerText != null)
+                {
+                    winnerText.text = "You win! :)";
+                }
+                else
+                {
+                    Debug.LogError("WinnerText component not found in WinnerPanel.");
+                }
                 cardPanel.SetActive(false);
                 opponentCardsPanel.SetActive(false);
                 opponentPanel.SetActive(false);
@@ -593,6 +602,14 @@ public class GameManager : MonoBehaviour
                     if (opponentCardInfo.Count == 0)
                     {
                         cardPanel.SetActive(false);
+                        if (winnerText != null)
+                        {
+                            winnerText.text = "You lose :(!";
+                        }
+                        else
+                        {
+                            Debug.LogError("WinnerText component not found in WinnerPanel.");
+                        }
                         opponentCardsPanel.SetActive(false);
                         opponentPanel.SetActive(false);
                         winnerPanel.SetActive(true);
@@ -692,7 +709,46 @@ public class GameManager : MonoBehaviour
     }
 
 
+    public void ResetGame()
+    {
+        // Hide the winner panel
+        winnerPanel.SetActive(false);
 
+        // Clear player and opponent cards
+        foreach (GameObject card in opponentCards)
+        {
+            Destroy(card);
+        }
+        opponentCards.Clear();
+        opponentCardInfo.Clear();
+        for (int i = 0; i < lastThreeCards.Length; i++)
+        {
+            lastThreeSprites[i] = null;
+            lastThreeCards[i].SetActive(false);
+        }
+        int l = 0;
+        lastThreeSprites[l] = GetRandomCards(1)[l];
+        currentCard = lastThreeSprites[l];
+        UpdateCardSprite(lastThreeCards[l], lastThreeSprites[l].sprite.texture);
+        lastThreeCards[l].SetActive(true);
+        // Add logic to reset player's cards similarly if needed
+
+        // Restart the game logic as needed
+        StartGame();
+    }
+
+    public void ResetGameAndShowMenu()
+    {
+        // Call ResetGame to reset the game state
+        ResetGame();
+
+        // Show the menu panel
+        menuPanel.SetActive(true);
+        cardPanel.SetActive(false);
+        opponentCardsPanel.SetActive(false);
+        opponentPanel.SetActive(false);
+        winnerPanel.SetActive(false);
+    }
 
 
     List<Card> GetRandomCards(int count)
