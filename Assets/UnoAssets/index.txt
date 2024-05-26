@@ -1,0 +1,17 @@
+﻿Name: white-goat
+Type: model
+Format: 3Ds Max 2015
+Export: FBX, OBJ, MAT
+Render: Corona (5)
+Polys: 28104
+Verts: 25004
+Matclasses: Standardmaterial
+Units: Millimeters
+Dimension: 1031.48 x 1475.33 x 1965.54
+Preset: 3DDD/3DSKY
+Date: 2023.2.16
+Tags: 
+Packinfo: Packed with Model Packer by https://3dground.net/
+Packver: 1.8.4
+Description:
+

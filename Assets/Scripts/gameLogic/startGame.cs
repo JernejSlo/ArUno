@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Xml.Serialization;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.XR.ARFoundation;
@@ -8,9 +10,16 @@ public class GameManager : MonoBehaviour
 {
     public GameObject menuPanel;       // Reference to the menu panel
     public GameObject cardPanel;       // Reference to the card panel
+    public GameObject opponentPanel;       // Reference to the menu panel
+    public GameObject opponentCardsPanel;       // Reference to the card panel
+    public GameObject winnerPanel;       // Reference to the card panel
+
     public GameObject cardStackPrefab; // Prefab for the card stack
     public GameObject cardPrefab;      // Prefab for individual cards
     public GameObject cardButtonPrefab; // Prefab for card UI button
+    public GameObject opponentCardPrefab; // Prefab for card UI button
+
+
     public Button startButton;         // Reference to the start button
     public PlaneSpawner planeSpawner;  // Reference to the PlaneSpawner script
 
@@ -19,9 +28,14 @@ public class GameManager : MonoBehaviour
     private GameObject placedCards;    // Reference to the placed cards object
     private List<GameObject> cardButtons = new List<GameObject>(); // List of card buttons
 
+    private List<GameObject> opponentCards = new List<GameObject>(); // List of the opponents cards
+    private List<Card> opponentCardInfo = new List<Card>(); // List of the opponents cards
+
     private GameObject[] lastThreeCards = new GameObject[3]; // Array to manage the last three placed cards
     private Card[] lastThreeSprites = new Card[3]; // Array to manage the last three placed cards
+    private Card currentCard;
 
+    public float botPlayDelay = 0.5f;
 
     public List<Sprite> cardSprites;   // List of card sprites
     public List<Card> cards = new List<Card>(); // List of cards
@@ -32,6 +46,9 @@ public class GameManager : MonoBehaviour
     {
         // Ensure the card panel is initially inactive
         cardPanel.SetActive(false);
+        opponentCardsPanel.SetActive(false);
+        opponentPanel.SetActive(false);
+        winnerPanel.SetActive(false);
 
         startButton.onClick.AddListener(StartGame);
         planeSpawner.OnPlanesDetected += SpawnOrUpdateGameObjects;
@@ -40,7 +57,7 @@ public class GameManager : MonoBehaviour
         InitializeSpriteLookup();
         InitializeCards();
 
-       
+
     }
 
     void InitializeSpriteLookup()
@@ -59,6 +76,7 @@ public class GameManager : MonoBehaviour
         string[] colors = { "red", "green", "blue", "yellow" };
         string[] actions = { "Skip", "Reverse", "DrawTwo" };
         string[] blackActions = { "drawFour", "wild" };
+
 
         // Initialize colored cards
         foreach (var color in colors)
@@ -98,9 +116,13 @@ public class GameManager : MonoBehaviour
 
         // Activate the card panel
         cardPanel.SetActive(true);
+        opponentPanel.SetActive(true);
+        opponentCardsPanel.SetActive(true);
 
         gameStarted = true;
         Debug.Log("Start button clicked, menu hidden and card panel activated.");
+
+        DisplayOpponentCards(GetRandomCards(6));
 
         DisplayCards(GetRandomCards(6)); // Display 6 random cards
     }
@@ -165,18 +187,22 @@ public class GameManager : MonoBehaviour
                 // Instantiate two cards as an example
                 for (int i = 0; i < lastThreeCards.Length; i++)
                 {
-                   
-                    GameObject card = Instantiate(cardPrefab, placedCardsPosition + new Vector3(0, i * 0.01f, 0.1f), Quaternion.Euler(0, 10*flt, 0), placedCards.transform); // Slight offset and rotation
+
+                    GameObject card = Instantiate(cardPrefab, placedCardsPosition + new Vector3(0, i * 0.01f, 0.1f), Quaternion.Euler(0, 10 * flt, 0), placedCards.transform); // Slight offset and rotation
                     lastThreeCards[i] = card;
                     lastThreeCards[i].SetActive(false);
                     flt += 5;
-
                 }
-
+                int l = 0;
+                lastThreeSprites[l] = GetRandomCards(1)[l];
+                currentCard = lastThreeSprites[l];
+                UpdateCardSprite(lastThreeCards[l], lastThreeSprites[l].sprite.texture);
+                lastThreeCards[l].SetActive(true);
 
             }
             else
             {
+                
                 // Reposition the existing placed cards parent object
                 placedCards.transform.position = placedCardsPosition;
             }
@@ -185,8 +211,85 @@ public class GameManager : MonoBehaviour
         {
             Debug.Log("No planes detected.");
         }
+
+        
     }
 
+    void SetCardTexture(GameObject card, Texture newTexture)
+    {
+        Transform frontQuad = card.transform.Find("CardBody/FrontQuad");
+        if (frontQuad != null)
+        {
+            MeshRenderer renderer = frontQuad.GetComponent<MeshRenderer>();
+            if (renderer != null)
+            {
+                renderer.material.mainTexture = newTexture;
+                Debug.Log($"Updated texture of {card.name} to {newTexture.name}");
+            }
+            else
+            {
+                Debug.LogError($"MeshRenderer not found on {frontQuad.name}");
+            }
+        }
+        else
+        {
+            Debug.LogError($"Front Quad not found on {card.name}");
+        }
+    }
+
+    void DisplayOpponentCards(List<Card> cardsToDisplay)
+    {
+        foreach (var img in opponentCards)
+        {
+            Destroy(img);
+        }
+        opponentCards.Clear();
+
+        foreach (var card in cardsToDisplay)
+        {
+            GameObject card_ = Instantiate(opponentCardPrefab, opponentCardsPanel.transform);
+
+            if (card_ != null)
+            {
+                // Log child components for debugging
+                Image image = card_.GetComponent<Image>();
+                if (image != null)
+                {
+                    Debug.Log($"Current sprite before setting: {(image.sprite != null ? image.sprite.name : "None")}");
+                    
+                    card_.name = $"{card.sprite.name} at index {cardButtons.Count}";
+                    Debug.Log($"Setting sprite: {card.sprite.name} for card: {card.color} {card.action}");
+                    Debug.Log($"Current sprite after setting: {(image.sprite != null ? image.sprite.name : "None")}");
+                }
+                else
+                {
+                    Debug.LogError("CardButton prefab is missing an Image component.");
+                }
+
+                // Find the Button component within the card button prefab
+
+                opponentCardInfo.Add(card);
+                opponentCards.Add(card_);
+
+                // Debugging logs for each card button created
+                Debug.Log($"Created card button for: {card.color} {card.action} with sprite {card.sprite?.name}");
+            }
+            else
+            {
+                Debug.LogError("Failed to instantiate card button prefab.");
+            }
+        }
+
+
+        // Force a layout rebuild
+        Canvas.ForceUpdateCanvases();
+
+        // Toggle the active state of the card panel to refresh the UI
+        opponentCardsPanel.SetActive(false);
+        opponentCardsPanel.SetActive(true);
+
+
+    }
 
     void DisplayCards(List<Card> cardsToDisplay)
     {
@@ -329,32 +432,189 @@ public class GameManager : MonoBehaviour
 
         if (validMove(card))
         {
+            currentCard = card;
             PlaceCard(card);
             RemoveCardButton(card);
-            otherGameLogic(card);
+            if (cardButtons.Count == 0)
+            {
+
+                cardPanel.SetActive(false);
+                opponentCardsPanel.SetActive(false);
+                opponentPanel.SetActive(false);
+                winnerPanel.SetActive(true);
+                return;
+            }
+            otherGameLogic(card, true);
+            
         }
        
 
     }
 
-    private Boolean validMove(Card card)
+    private bool validMove(Card card)
     {
-        // logic if card was correct
+        // A card can be placed if:
+        // 1. The card has the same color as the current card
+        // 2. The card has the same value as the current card
+        // 3. The card is a Wild card (color "black")
+        // 4. The card is a Wild Draw Four card (color "black")
 
-        return true;
+        // Check for Wild cards
+        if (card.color == "black")
+        {
+            return true;
+        }
+
+        if (currentCard.color == "black")
+        {
+            return true;
+        }
+
+        // Check for same color or same value
+        if (card.color == currentCard.color || card.action == currentCard.action)
+        {
+            return true;
+        }
+
+        // If none of the above conditions are met, the move is not valid
+        return false;
     }
 
-    private void otherGameLogic(Card card)
+    private void otherGameLogic(Card card, Boolean fromUser)
     {
-        // handle what happens
+        // Handle the card action for the opponent
+        switch (card.action)
+        {
+            case "DrawTwo":
+                if (fromUser)
+                {
+                    AddOpponentCards(2);
+                }
+                else
+                {
+                    AddRandomCard();
+                    AddRandomCard();
+                    StartCoroutine(HandleBotDecisionWithDelay(card));
+                }
+                break;
+            case "drawFour":
+                if (fromUser)
+                {
+                    AddOpponentCards(4);
+                }
+                else
+                {
+                    AddRandomCard();
+                    AddRandomCard();
+                    AddRandomCard();
+                    AddRandomCard();
+                    StartCoroutine(HandleBotDecisionWithDelay(card));
+                }
+                break;
+            case "wild":
+                if (fromUser)
+                {
+                    StartCoroutine(HandleBotDecisionWithDelay(card));
+                }
+                break;
+            case "Skip":
+                if (!fromUser)
+                {
+                    StartCoroutine(HandleBotDecisionWithDelay(card));
+                }
+                break;
+            case "Reverse":
+                // Handle other actions like changing turn, skipping turn, etc.
+                // Example: skip turn logic for "Skip" card
+                // currentPlayer = (currentPlayer + 1) % numberOfPlayers;
+                if (!fromUser)
+                {
+                    StartCoroutine(HandleBotDecisionWithDelay(card));
+                }
+                break;
+            default:
+                if (fromUser)
+                {
+                    StartCoroutine(HandleBotDecisionWithDelay(card));
+                }
+                break;
 
-        // èe je bot na potezi narediš od bota
+        }
+
     }
 
-    private void handleBotDecision(Card card)
+    private void AddOpponentCards(int numberOfCards)
     {
-        // handle what the bot does
+        for (int i = 0; i < numberOfCards; i++)
+        {
+            // Instantiate a new card object
+            GameObject card = Instantiate(opponentCardPrefab, opponentCardsPanel.transform); // Assuming you have a parent object for opponent's cards
+            opponentCards.Add(card);
+            opponentCardInfo.Add(GetRandomCards(1)[0]);
+
+        }
     }
+
+    private IEnumerator HandleBotDecisionWithDelay(Card card)
+    {
+        yield return new WaitForSeconds(0.5f);
+        HandleBotDecision(card);
+    }
+
+    private void HandleBotDecision(Card card)
+    {
+        StartCoroutine(BotPlayCards());
+    }
+
+    private IEnumerator BotPlayCards()
+    {
+        while (true)
+        {
+            bool hasValidCard = false;
+
+            // Check for a valid card in the bot's hand
+            for (int i = 0; i < opponentCardInfo.Count; i++)
+            {
+                Debug.Log("User didn't draw a card");
+                if (validMove(opponentCardInfo[i]))
+                {
+                    // Play the valid card
+                    Card chosenCard = opponentCardInfo[i];
+                    PlaceCard(chosenCard);
+
+                    currentCard = chosenCard;
+
+                    // Remove the card from the opponent's hand
+                    opponentCardInfo.RemoveAt(i);
+                    Destroy(opponentCards[i]);
+                    opponentCards.RemoveAt(i);
+
+                    otherGameLogic(chosenCard, false);
+                    if (opponentCardInfo.Count == 0)
+                    {
+                        cardPanel.SetActive(false);
+                        opponentCardsPanel.SetActive(false);
+                        opponentPanel.SetActive(false);
+                        winnerPanel.SetActive(true);
+                        yield break;
+                    }
+                    Debug.Log($"Bot played card: {chosenCard.color} {chosenCard.action}");
+                    hasValidCard = true;
+                    yield break;
+                }
+            }
+
+            if (!hasValidCard)
+            {
+                Debug.Log("User had to draw a card");
+                // Draw a card if no valid card is found
+                AddOpponentCards(1);
+                yield return new WaitForSeconds(0.3f); // Delay between draws
+            }
+        }
+    }
+
+    
 
     void RemoveCardButton(Card card)
     {
